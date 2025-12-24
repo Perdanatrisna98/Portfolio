@@ -187,55 +187,6 @@ const observer = new IntersectionObserver((entries) => {
 const aboutSection = document.querySelector('#about');
 if (aboutSection) observer.observe(aboutSection);
 
-// Contact Form
-contactForm.addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    // Get form values
-    const name = document.getElementById('name').value;
-    const email = document.getElementById('email').value;
-    const subject = document.getElementById('subject').value;
-    const message = document.getElementById('message').value;
-    
-    // Create success message
-    const formContainer = contactForm.parentElement;
-    const successMessage = document.createElement('div');
-    successMessage.className = 'success-message';
-    successMessage.innerHTML = `
-        <div class="success-icon">
-            <i class="fas fa-check-circle"></i>
-        </div>
-        <h3>Pesan Terkirim!</h3>
-        <p>Terima kasih ${name}! Saya akan membalas pesan Anda ke ${email} dalam waktu 24 jam.</p>
-        <button class="btn btn-primary" onclick="this.parentElement.remove()">Tutup</button>
-    `;
-    
-    // Style success message
-    successMessage.style.cssText = `
-        text-align: center;
-        padding: 40px;
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(16, 185, 129, 0.1));
-        border-radius: var(--radius);
-        margin-top: 20px;
-        animation: fadeIn 0.5s ease;
-    `;
-    
-    successMessage.querySelector('.success-icon').style.cssText = `
-        font-size: 4rem;
-        color: var(--secondary);
-        margin-bottom: 20px;
-    `;
-    
-    // Replace form with success message
-    contactForm.style.display = 'none';
-    formContainer.appendChild(successMessage);
-    
-    // Reset form
-    setTimeout(() => {
-        contactForm.reset();
-    }, 100);
-});
-
 // Add animation for floating elements
 function createParticles() {
     const particlesContainer = document.createElement('div');
@@ -379,3 +330,137 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         }
     });
 });
+
+// Contact Form
+async function sendToTelegram(data) {
+    const response = await fetch(
+        "https://script.google.com/macros/s/AKfycbzETmKAuKWAsq9-1dBVFBku3cSYsI1_Rrj_P8pHK8UDsASF5efc45U5Sz1WLWwQkvOo/exec",
+        {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+        }
+    );
+
+    return await response.json();
+}
+
+document.getElementById('contactForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const formData = {
+        name: document.getElementById('name').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        subject: document.getElementById('subject').value.trim(),
+        message: document.getElementById('message').value.trim()
+    };
+
+    if (!formData.name || !formData.email || !formData.subject || !formData.message) {
+        showError('Harap lengkapi semua field!');
+        return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+        showError('Format email tidak valid!');
+        return;
+    }
+
+    try {
+        const result = await sendToTelegram(formData);
+
+        if (result.success) {
+            showSuccessMessage(formData.name, formData.email);
+
+            contactForm.reset();
+
+            saveToLocalStorage(formData);
+        } else {
+            showError(result.message);
+        } 
+    } catch (error) {
+        showError('Terjadi kesalahan: ' + error.message);
+    }
+});
+
+function showSuccessMessage(name, email) {
+    const formContainer = document.querySelector('.contact-form');
+    const successMessage = document.createElement('div');
+    successMessage.className = 'success-message';
+    successMessage.innerHTML = `
+        <div class="success-icon">
+            <i class="fas fa-check-circle"></i>
+        </div>
+        <h3>Pesan Terkirim!</h3>
+        <p>Terima kasih ${name}! Saya akan membalas pesan Anda ke ${email} dalam waktu 24 jam.</p>
+        <p class="telegram-info"><i class="fab fa-telegram"></i> Pesan juga telah dikirim ke Telegram bot.</p>
+        <button class="btn btn-primary" onclick="location.reload()">Kirim Pesan Lain</button>
+    `;
+
+    successMessage.style.cssText = `
+        text-align: center;
+        padding: 40px;
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(99, 102, 241, 0.1))
+        border-radius: var(--radius);
+        margin-top: 20px;
+        animation: fadeIn 0.5s ease;
+    `;
+
+    successMessage.querySelector('.success-icon').style.cssText = `
+        font-size: 4rem;
+        color: var(--secondary);
+        margin-bottom: 20px
+    `;
+
+    contactForm.style.display = 'none';
+    formContainer.appendChild(successMessage);
+}
+
+function showError(message) {
+    const oldError = document.querySelector('.error-message');
+    if (oldError) oldError.remove();
+
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'error-message';
+    errorDiv.innerHTML = `
+        <div class="error-icon">
+            <i class="fas fa-exclamation-circle"></i>
+        </div>
+        <p>${message}</p>
+    `;
+
+    errorDiv.style.cssText = `
+        text-align: center;
+        padding: 15px;
+        background: rgba(239, 68, 68, 0.1);
+        border-left: 4px solid #ef4444;
+        border-radius: var(--radius);
+        margin-bottom: 20px;
+        color: #ef4444;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    `;
+
+    const form = document.getElementById('contactForm');
+    form.parentNode.insertBefore(errorDiv, form);
+
+    setTimeout(() => {
+        if (errorDiv.parentNode) {
+            errorDiv.parentNode.removeChild(errorDiv);
+        }
+    }, 5000);
+}
+
+function saveToLocalStorage(data) {
+    try {
+        const messages = JSON.parse(localStorage.getItem('contactMessages') || '[]');
+        messages.push({
+            ...data,
+            timestamp: new Date().toISOString()
+        });
+        localStorage.setItem('contactMessages', JSON.stringify(messages.slice(-50)));
+    } catch (error) {
+        console.error('Gagal menyimpan ke localStorage: ', error);
+    }
+}
