@@ -1,12 +1,14 @@
 // =======================
 // Initialize AOS
 // =======================
-AOS.init({
-  duration: 800,
-  offset: 100,
-  once: true,
-  easing: 'ease-out-cubic'
-});
+if (window.AOS) {
+  AOS.init({
+    duration: 700,
+    offset: 90,
+    once: true,
+    easing: 'ease-out-cubic'
+  });
+}
 
 // =======================
 // DOM Elements
@@ -16,104 +18,93 @@ const navLinks = document.querySelector('.nav-links');
 const themeSwitch = document.getElementById('theme-switch');
 const backToTop = document.getElementById('backToTop');
 const contactForm = document.getElementById('contactForm');
-const cursorDot = document.querySelector('.cursor-dot');
-const cursorOutline = document.querySelector('.cursor-outline');
 const skillProgressBars = document.querySelectorAll('.skill-progress');
-
-// =======================
-// Custom Cursor
-// =======================
-document.addEventListener('mousemove', (e) => {
-  cursorDot.style.left = `${e.clientX}px`;
-  cursorDot.style.top = `${e.clientY}px`;
-
-  cursorOutline.animate(
-    { left: `${e.clientX}px`, top: `${e.clientY}px` },
-    { duration: 300, fill: 'forwards' }
-  );
-});
-
-document.addEventListener('mousedown', () => {
-  cursorDot.style.width = '12px';
-  cursorDot.style.height = '12px';
-  cursorOutline.style.width = '60px';
-  cursorOutline.style.height = '60px';
-});
-
-document.addEventListener('mouseup', () => {
-  cursorDot.style.width = '8px';
-  cursorDot.style.height = '8px';
-  cursorOutline.style.width = '40px';
-  cursorOutline.style.height = '40px';
-});
-
-// Hover effect
-document.querySelectorAll('a, button, .project-card, .skill-category').forEach(el => {
-  el.addEventListener('mouseenter', () => {
-    cursorDot.style.width = '16px';
-    cursorDot.style.height = '16px';
-    cursorOutline.style.width = '60px';
-    cursorOutline.style.height = '60px';
-  });
-
-  el.addEventListener('mouseleave', () => {
-    cursorDot.style.width = '8px';
-    cursorDot.style.height = '8px';
-    cursorOutline.style.width = '40px';
-    cursorOutline.style.height = '40px';
-  });
-});
+const progressBar = document.querySelector('.scroll-progress');
+const header = document.getElementById('header');
 
 // =======================
 // Mobile Menu
 // =======================
-mobileMenuBtn.addEventListener('click', () => {
-  mobileMenuBtn.classList.toggle('active');
-  navLinks.classList.toggle('active');
-  document.body.style.overflow = navLinks.classList.contains('active') ? 'hidden' : '';
-});
+function closeMobileMenu() {
+  mobileMenuBtn.classList.remove('active');
+  navLinks.classList.remove('active');
+  mobileMenuBtn.setAttribute('aria-expanded', 'false');
+  document.body.style.overflow = '';
+}
 
-document.querySelectorAll('.nav-link').forEach(link => {
-  link.addEventListener('click', () => {
-    mobileMenuBtn.classList.remove('active');
-    navLinks.classList.remove('active');
-    document.body.style.overflow = '';
+if (mobileMenuBtn && navLinks) {
+  mobileMenuBtn.addEventListener('click', () => {
+    const isOpen = navLinks.classList.toggle('active');
+    mobileMenuBtn.classList.toggle('active', isOpen);
+    mobileMenuBtn.setAttribute('aria-expanded', String(isOpen));
+    document.body.style.overflow = isOpen ? 'hidden' : '';
   });
-});
+
+  document.querySelectorAll('.nav-link').forEach(link => {
+    link.addEventListener('click', closeMobileMenu);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeMobileMenu();
+  });
+
+  document.addEventListener('click', (e) => {
+    if (
+      navLinks.classList.contains('active') &&
+      !navLinks.contains(e.target) &&
+      !mobileMenuBtn.contains(e.target)
+    ) {
+      closeMobileMenu();
+    }
+  });
+}
 
 // =======================
 // Theme Toggle
 // =======================
-themeSwitch.addEventListener('change', () => {
-  const theme = themeSwitch.checked ? 'dark' : 'light';
+function setTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
-  localStorage.setItem('theme', theme);
-});
+  if (themeSwitch) themeSwitch.checked = theme === 'dark';
+}
 
-const savedTheme = localStorage.getItem('theme');
-if (savedTheme) {
-  document.documentElement.setAttribute('data-theme', savedTheme);
-  themeSwitch.checked = savedTheme === 'dark';
+if (themeSwitch) {
+  themeSwitch.addEventListener('change', () => {
+    const theme = themeSwitch.checked ? 'dark' : 'light';
+    setTheme(theme);
+    localStorage.setItem('theme', theme);
+  });
+
+  const savedTheme = localStorage.getItem('theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  setTheme(savedTheme || (prefersDark ? 'dark' : 'light'));
 }
 
 // =======================
 // Scroll & Back To Top
 // =======================
 window.addEventListener('scroll', () => {
-  const progressBar = document.querySelector('.scroll-progress');
-  const totalHeight = document.body.scrollHeight - window.innerHeight;
-  progressBar.style.width = `${(window.scrollY / totalHeight) * 100}%`;
+  if (progressBar) {
+    const totalHeight = document.body.scrollHeight - window.innerHeight;
+    const width = totalHeight > 0 ? (window.scrollY / totalHeight) * 100 : 0;
+    progressBar.style.width = `${width}%`;
+  }
 
-  document.getElementById('header')
-    .classList.toggle('scrolled', window.scrollY > 50);
+  if (header) {
+    header.classList.toggle('scrolled', window.scrollY > 50);
+  }
 
-  backToTop.style.opacity = window.scrollY > 500 ? '1' : '0';
-  backToTop.style.visibility = window.scrollY > 500 ? 'visible' : 'hidden';
-});
+  if (backToTop) {
+    const visible = window.scrollY > 500;
+    backToTop.style.opacity = visible ? '1' : '0';
+    backToTop.style.visibility = visible ? 'visible' : 'hidden';
+  }
+}, { passive: true });
 
-backToTop.addEventListener('click', () => {
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-});
+if (backToTop) {
+  backToTop.addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+}
 
 // =======================
 // Typing Effect
@@ -141,9 +132,11 @@ function erase() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  setTimeout(type, 1000);
-});
+if (typedTextSpan) {
+  document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(type, 800);
+  });
+}
 
 // =======================
 // Skill Progress
@@ -154,54 +147,57 @@ const observer = new IntersectionObserver(entries => {
       skillProgressBars.forEach(bar => {
         bar.style.width = `${bar.dataset.width}%`;
       });
+      observer.disconnect();
     }
   });
-}, { threshold: 0.5 });
+}, { threshold: 0.3 });
 
 const aboutSection = document.querySelector('#about');
 if (aboutSection) observer.observe(aboutSection);
 
 // =======================
-// CONTACT FORM (AMAN)
+// CONTACT FORM
 // =======================
-contactForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
+if (contactForm) {
+  contactForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
 
-  const formData = {
-    name: document.getElementById('name').value.trim(),
-    email: document.getElementById('email').value.trim(),
-    subject: document.getElementById('subject').value.trim(),
-    message: document.getElementById('message').value.trim()
-  };
+    const formData = {
+      name: document.getElementById('name').value.trim(),
+      email: document.getElementById('email').value.trim(),
+      subject: document.getElementById('subject').value.trim(),
+      message: document.getElementById('message').value.trim()
+    };
 
-  if (!formData.name || !formData.email || !formData.subject || !formData.message) {
-    showError('Harap lengkapi semua field!');
-    return;
-  }
-
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-    showError('Format email tidak valid!');
-    return;
-  }
-
-  try {
-    const res = await fetch('/api/telegram', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData)
-    });
-
-    if (res.ok) {
-      showSuccessMessage(formData.name, formData.email);
-      contactForm.reset();
-      saveToLocalStorage(formData);
-    } else {
-      showError('Gagal mengirim pesan');
+    if (!formData.name || !formData.email || !formData.subject || !formData.message) {
+      showError('Harap lengkapi semua field!');
+      return;
     }
-  } catch {
-    showError('Terjadi kesalahan jaringan');
-  }
-});
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      showError('Format email tidak valid!');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/telegram', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+
+      if (res.ok) {
+        showSuccessMessage(formData.name, formData.email);
+        contactForm.reset();
+        saveToLocalStorage(formData);
+      } else {
+        showError('Gagal mengirim pesan');
+      }
+    } catch {
+      showError('Terjadi kesalahan jaringan');
+    }
+  });
+}
 
 // =======================
 // UI Helpers
